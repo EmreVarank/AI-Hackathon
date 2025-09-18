@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Obezite Tahmini - ML Web App</title>
+    <meta name="description" content="Machine Learning tabanlı obezite seviyesi tahmin sistemi">
+    <meta name="keywords" content="obezite, tahmin, machine learning, sağlık, BMI">
+    
+    <!-- Styles -->
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>🏥 Obezite Seviyesi Tahmini</h1>
+        <p style="text-align: center; color: #666; margin-bottom: 30px;">
+            Machine Learning ile kişiselleştirilmiş obezite analizi
+        </p>
+        
+        <form id="obesityForm">
+            <!-- Basic Information -->
+            <h3>📋 Temel Bilgiler</h3>
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="gender">👤 Cinsiyet:</label>
+                        <select id="gender" required>
+                            <option value="">Seçiniz</option>
+                            <option value="Male">Erkek</option>
+                            <option value="Female">Kadın</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="age">🎂 Yaş:</label>
+                        <input type="number" id="age" min="14" max="80" placeholder="örn: 25" required>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="height">📏 Boy (cm):</label>
+                        <input type="number" id="height" min="120" max="220" placeholder="örn: 175" required>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="weight">⚖️ Kilo (kg):</label>
+                        <input type="number" id="weight" min="30" max="200" placeholder="örn: 70" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Lifestyle Questions -->
+            <h3>🏃‍♂️ Yaşam Tarzı Soruları (Detaylı Tahmin)</h3>
+            
+            <div class="form-group">
+                <label for="family_history">👨‍👩‍👧‍👦 Ailede obezite var mı?</label>
+                <select id="family_history">
+                    <option value="no">Hayır</option>
+                    <option value="yes">Evet</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="favc">🍕 Yüksek kalorili yiyecekleri sık tüketiyor musunuz?</label>
+                <select id="favc">
+                    <option value="no">Hayır</option>
+                    <option value="yes">Evet</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="fcvc">🥬 Sebze tüketimi:</label>
+                        <select id="fcvc">
+                            <option value="1">Az (günde 1 porsiyon altı)</option>
+                            <option value="2" selected>Orta (günde 1-2 porsiyon)</option>
+                            <option value="3">Çok (günde 3+ porsiyon)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="ncp">🍽️ Ana öğün sayısı:</label>
+                        <select id="ncp">
+                            <option value="1">1</option>
+                            <option value="2">2</option>
+                            <option value="3" selected>3</option>
+                            <option value="4">4+</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <label for="caec">🍿 Ara öğünlerde yemek yer misiniz?</label>
+                <select id="caec">
+                    <option value="no">Hayır</option>
+                    <option value="Sometimes" selected>Bazen</option>
+                    <option value="Frequently">Sık sık</option>
+                    <option value="Always">Her zaman</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label for="smoke">🚭 Sigara içiyor musunuz?</label>
+                <select id="smoke">
+                    <option value="no" selected>Hayır</option>
+                    <option value="yes">Evet</option>
+                </select>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="ch2o">💧 Günlük su tüketimi:</label>
+                        <select id="ch2o">
+                            <option value="1">1 litre altı</option>
+                            <option value="2" selected>1-2 litre</option>
+                            <option value="3">2+ litre</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="scc">📊 Kalori kontrolü yapıyor musunuz?</label>
+                        <select id="scc">
+                            <option value="no" selected>Hayır</option>
+                            <option value="yes">Evet</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="faf">🏋️‍♂️ Fiziksel aktivite sıklığı:</label>
+                        <select id="faf">
+                            <option value="0">Hiç (0 gün/hafta)</option>
+                            <option value="1" selected>Az (1-2 gün/hafta)</option>
+                            <option value="2">Orta (3-4 gün/hafta)</option>
+                            <option value="3">Yüksek (5+ gün/hafta)</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="tue">📱 Teknoloji kullanım saati:</label>
+                        <select id="tue">
+                            <option value="0">0-2 saat</option>
+                            <option value="1" selected>3-5 saat</option>
+                            <option value="2">5+ saat</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col">
+                    <div class="form-group">
+                        <label for="calc">🍷 Alkol tüketimi:</label>
+                        <select id="calc">
+                            <option value="no">Hiç</option>
+                            <option value="Sometimes" selected>Bazen</option>
+                            <option value="Frequently">Sık</option>
+                            <option value="Always">Her zaman</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="col">
+                    <div class="form-group">
+                        <label for="mtrans">🚗 Ana ulaşım türü:</label>
+                        <select id="mtrans">
+                            <option value="Public_Transportation">🚌 Toplu taşıma</option>
+                            <option value="Walking">🚶‍♂️ Yürüme</option>
+                            <option value="Automobile" selected>🚗 Otomobil</option>
+                            <option value="Motorbike">🏍️ Motosiklet</option>
+                            <option value="Bike">🚴‍♂️ Bisiklet</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div style="margin-top: 30px;">
+                <button type="submit" class="btn">
+                    🎯 Detaylı Tahmin Yap
+                </button>
+                <button type="button" class="btn quick-predict" onclick="quickPredict()">
+                    ⚡ Hızlı Tahmin (Sadece temel bilgiler)
+                </button>
+                <button type="button" class="btn" onclick="clearForm()" 
+                        style="background-color: #95a5a6; margin-top: 5px;">
+                    🗑️ Formu Temizle
+                </button>
+            </div>
+        </form>
+
+        <!-- Loading Indicator -->
+        <div class="loading">
+            <p>🔮 AI tahmin yapıyor, lütfen bekleyin...</p>
+        </div>
+
+        <!-- Results -->
+        <div id="result" class="result"></div>
+
+        <!-- Footer -->
+        <div style="text-align: center; margin-top: 40px; color: #666; font-size: 14px;">
+            <p>⚠️ <strong>Uyarı:</strong> Bu tahmin sadece bilgilendirme amaçlıdır. 
+            Tıbbi teşhis yerine geçmez. Sağlık sorunları için doktorunuza başvurun.</p>
+            <p>🤖 Powered by Random Forest ML Algorithm | Accuracy: ~96%</p>
+        </div>
+    </div>
+
+    <!-- Scripts -->
+    <script src="js/app.js"></script>
+</body>
+</html>
