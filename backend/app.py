@@ -1,16 +1,17 @@
-from flask import Flask, request, jsonify, Response, stream_template
+from flask import Flask, request, jsonify, Response, stream_template, send_from_directory
 from flask_cors import CORS
 import joblib
 import pandas as pd
 import numpy as np
 import json
 from datetime import datetime
+import os
 
 # Llama entegrasyonu
 from llama_integration import LlamaHealthBot, create_bot_instance, get_quick_health_tips
 
 # Initialize Flask app
-app = Flask(__name__)
+app = Flask(__name__, static_folder='../frontend', static_url_path='')
 CORS(app)  # Enable CORS for all routes
 
 # Initialize Llama Health Bot
@@ -83,6 +84,16 @@ def process_input_data(data):
 
 @app.route('/', methods=['GET'])
 def home():
+    """Serve frontend homepage"""
+    return send_from_directory(app.static_folder, 'index.html')
+
+@app.route('/chat')
+def chat_page():
+    """Serve chat page"""
+    return send_from_directory(app.static_folder, 'chat.html')
+
+@app.route('/api/status', methods=['GET'])
+def api_status():
     """Health check endpoint"""
     return jsonify({
         "message": "Obesity Prediction API is running!",
