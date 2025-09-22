@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sağlık Asistanı - AI Obezite Danışmanı</title>
+    <meta name="description" content="Llama AI ile desteklenen kişiselleştirilmiş sağlık danışmanı">
+    <link rel="stylesheet" href="css/chat.css">
+    <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>🤖</text></svg>">
+</head>
+<body>
+    <div class="chat-container">
+        <!-- Header -->
+        <header class="chat-header">
+            <a href="index.html" class="back-button">
+                ← Ana Sayfa
+            </a>
+            
+            <h1>🤖 Sağlık Asistanı</h1>
+            <p>Llama AI ile desteklenen kişiselleştirilmiş sağlık danışmanı</p>
+            
+            <div class="status-indicator">
+                <div class="status-dot offline" id="statusDot"></div>
+                <span id="statusText">Bağlantı kontrol ediliyor...</span>
+            </div>
+        </header>
+
+        <!-- Ana İçerik -->
+        <main class="chat-main">
+            <!-- Yan Panel -->
+            <aside class="chat-sidebar">
+                <!-- Sağlık Özeti -->
+                <section class="sidebar-section">
+                    <h3>📊 Sağlık Özetiniz</h3>
+                    <div class="health-summary" id="healthSummary">
+                        <div class="summary-item">
+                            <span>BMI:</span>
+                            <span class="summary-value" id="summaryBMI">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Durum:</span>
+                            <span class="summary-value" id="summaryStatus">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Yaş:</span>
+                            <span class="summary-value" id="summaryAge">-</span>
+                        </div>
+                        <div class="summary-item">
+                            <span>Cinsiyet:</span>
+                            <span class="summary-value" id="summaryGender">-</span>
+                        </div>
+                    </div>
+                </section>
+
+                <!-- Hızlı Sorular -->
+                <section class="sidebar-section">
+                    <h3>💡 Hızlı Sorular</h3>
+                    <div class="quick-questions">
+                        <button class="quick-question" data-question="Durumumu nasıl değerlendiriyorsun?">
+                            Durumumu nasıl değerlendiriyorsun?
+                        </button>
+                        <button class="quick-question" data-question="Hangi besinleri tüketmeli/tüketmemeli?">
+                            Beslenme önerilerin neler?
+                        </button>
+                        <button class="quick-question" data-question="Hangi egzersizleri yapmalıyım?">
+                            Hangi egzersizleri yapmalıyım?
+                        </button>
+                        <button class="quick-question" data-question="Kilo vermek için ne kadar süre gerekir?">
+                            Kilo vermek için ne kadar süre gerekir?
+                        </button>
+                        <button class="quick-question" data-question="Motivasyonum düştü, bana tavsiyeler verir misin?">
+                            Motivasyon tavsiyeleri verir misin?
+                        </button>
+                        <button class="quick-question" data-question="Günlük rutinimde hangi değişiklikleri yapmalıyım?">
+                            Yaşam tarzı önerilerini anlat
+                        </button>
+                    </div>
+                </section>
+            </aside>
+
+            <!-- Chat Alanı -->
+            <section class="chat-area">
+                <!-- Mesajlar -->
+                <div class="chat-messages" id="chatMessages">
+                    <!-- Hoş geldin mesajı -->
+                    <div class="message assistant">
+                        <div class="message-avatar">🤖</div>
+                        <div class="message-content">
+                            <div class="message-bubble">
+                                <h3>🏥 Merhaba! Sağlık Asistanınızım</h3>
+                                <p>Size kişiselleştirilmiş sağlık önerileri sunmak için buradayım. Obezite, beslenme, egzersiz ve sağlıklı yaşam konularında sorularınızı yanıtlayabilirim.</p>
+                                
+                                <p><strong>💡 İpucu:</strong> Daha kişiselleştirilmiş öneriler için ana sayfada obezite tahmini yaptırıp sonuçlarınızı buraya aktarabilirsiniz.</p>
+                                
+                                <p><strong>⚠️ Önemli:</strong> Ben bir sağlık asistanıyım, tıbbi tanı koymam. Ciddi sağlık sorunları için mutlaka doktorunuza danışın.</p>
+                                
+                                <p>Size nasıl yardımcı olabilirim? 😊</p>
+                            </div>
+                            <div class="message-time" id="welcomeTime"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Input Alanı -->
+                <div class="chat-input-area">
+                    <div class="chat-input-container">
+                        <textarea 
+                            id="chatInput" 
+                            class="chat-input" 
+                            placeholder="Sağlık sorunuzu yazın... (Örn: Hangi besinlerden kaçınmalıyım?)"
+                            rows="1"
+                        ></textarea>
+                        <button id="sendButton" class="send-button" title="Gönder">
+                            ➤
+                        </button>
+                    </div>
+                </div>
+            </section>
+        </main>
+    </div>
+
+    <!-- JavaScript -->
+    <script src="js/chat.js"></script>
+    <script>
+        // Sayfa yüklendiğinde hoş geldin mesajının zamanını ayarla
+        document.addEventListener('DOMContentLoaded', function() {
+            const welcomeTime = document.getElementById('welcomeTime');
+            if (welcomeTime) {
+                welcomeTime.textContent = new Date().toLocaleTimeString('tr-TR', {
+                    hour: '2-digit',
+                    minute: '2-digit'
+                });
+            }
+            
+            // URL'den gelen sağlık verilerini kontrol et
+            const urlParams = new URLSearchParams(window.location.search);
+            const healthData = urlParams.get('data');
+            
+            if (healthData) {
+                try {
+                    const data = JSON.parse(decodeURIComponent(healthData));
+                    // Sağlık verilerini yükle
+                    loadHealthData(data);
+                    // Otomatik sağlık analizi başlat
+                    setTimeout(() => {
+                        requestHealthAnalysis(data);
+                    }, 1000);
+                } catch (e) {
+                    console.warn('Sağlık verisi parse edilemedi:', e);
+                }
+            }
+        });
+        
+        function loadHealthData(data) {
+            const summaryBMI = document.getElementById('summaryBMI');
+            const summaryStatus = document.getElementById('summaryStatus');
+            const summaryAge = document.getElementById('summaryAge');
+            const summaryGender = document.getElementById('summaryGender');
+            
+            if (data.prediction && data.input_data) {
+                summaryBMI.textContent = data.prediction.bmi || '-';
+                summaryStatus.textContent = data.prediction.predicted_class || '-';
+                summaryAge.textContent = data.input_data.age || '-';
+                summaryGender.textContent = data.input_data.gender === 'Male' ? 'Erkek' : 'Kadın';
+                
+                // Sağlık verilerini global değişkende sakla
+                window.healthContext = data;
+            }
+        }
+        
+        function requestHealthAnalysis(data) {
+            const message = `Merhaba! Az önce obezite tahmini yaptırdım ve sonuçlarım geldi. Durumumu analiz edip öneriler verir misin?
+
+📊 Sonuçlarım:
+- BMI: ${data.prediction?.bmi}
+- Obezite Seviyesi: ${data.prediction?.predicted_class}
+- Tahmin Güveni: %${data.prediction?.confidence}
+
+Bana özel öneriler bekliyorum! 😊`;
+
+            // Mesajı otomatik olarak gönder
+            if (window.sendMessageWithContext) {
+                window.sendMessageWithContext(message, data);
+            }
+        }
+    </script>
+</body>
+</html>

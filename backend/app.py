@@ -1,12 +1,20 @@
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, Response, stream_template
 from flask_cors import CORS
 import joblib
 import pandas as pd
 import numpy as np
+import json
+from datetime import datetime
+
+# Llama entegrasyonu
+from llama_integration import LlamaHealthBot, create_bot_instance, get_quick_health_tips
 
 # Initialize Flask app
 app = Flask(__name__)
 CORS(app)  # Enable CORS for all routes
+
+# Initialize Llama Health Bot
+health_bot = create_bot_instance()
 
 # Load trained model and scaler
 import os
@@ -22,6 +30,7 @@ try:
 except Exception as e:
     print(f"Error loading model: {e}")
     print(f"Tried to load from: {model_path}")
+    print("⚠️ Model yüklenemedi, sadece chat özellikleri çalışacak!")
     model = None
     scaler = None
 
@@ -235,10 +244,188 @@ def quick_predict():
             "success": False
         }), 500
 
+@app.route('/api/chat/status', methods=['GET'])
+def chat_status():
+    """Llama chatbot servis durumunu kontrol et"""
+    try:
+        ollama_status = health_bot.check_ollama_status()
+        model_status = health_bot.check_model_availability() if ollama_status else False
+        
+        return jsonify({
+            "success": True,
+            "status": {
+                "ollama_running": ollama_status,
+                "model_available": model_status,
+                "model_name": health_bot.model_name,
+                "fallback_available": True  # Her zaman temel öneriler verebiliriz
+            }
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Status check failed: {str(e)}"
+        }), 500
+
+@app.route('/api/chat', methods=['POST'])
+def chat_with_assistant():
+    """Sağlık asistanı ile sohbet et (normal response)"""
+    try:
+        data = request.get_json()
+        
+        # Gerekli alanları kontrol et
+        if 'message' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Message field is required"
+            }), 400
+        
+        user_message = data['message']
+        context = data.get('context', None)  # Obezite tahmin sonuçları vs.
+        
+        # Ollama mevcut mu kontrol et
+        if health_bot.check_ollama_status() and health_bot.check_model_availability():
+            # Llama ile yanıt üret
+            response_text = health_bot.generate_chat_response(user_message, context)
+        else:
+            # Fallback: Temel sağlık önerileri
+            if context and 'predicted_class' in context:
+                bmi = context.get('bmi', 0)
+                obesity_class = context.get('predicted_class', 'Normal Weight')
+                response_text = get_quick_health_tips(obesity_class, bmi)
+            else:
+                response_text = """
+🏥 **Sağlık Asistanı**
+
+Merhaba! Size yardımcı olmak için buradayım. 
+
+🎯 **Yapabileceklerim:**
+- Obezite ve beslenme konularında bilgi verebilirim
+- Egzersiz önerileri sunabilirim  
+- Sağlıklı yaşam ipuçları paylaşabilirim
+
+⚠️ **Önemli:** Ben bir sağlık asistanıyım, tıbbi tanı koymam. Ciddi sağlık sorunları için mutlaka doktorunuza danışın.
+
+Size nasıl yardımcı olabilirim?
+"""
+        
+        return jsonify({
+            "success": True,
+            "response": response_text,
+            "timestamp": datetime.now().isoformat(),
+            "llama_used": health_bot.check_ollama_status()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Chat failed: {str(e)}"
+        }), 500
+
+@app.route('/api/chat/stream', methods=['POST'])
+def chat_stream():
+    """Streaming sohbet endpoint'i"""
+    try:
+        data = request.get_json()
+        
+        if 'message' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Message field is required"
+            }), 400
+        
+        user_message = data['message']
+        context = data.get('context', None)
+        
+        def generate_stream():
+            """Streaming response generator"""
+            try:
+                if health_bot.check_ollama_status() and health_bot.check_model_availability():
+                    # Llama streaming response
+                    for chunk in health_bot.generate_streaming_response(user_message, context):
+                        yield f"data: {json.dumps({'chunk': chunk, 'done': False})}\n\n"
+                    
+                    yield f"data: {json.dumps({'chunk': '', 'done': True})}\n\n"
+                else:
+                    # Fallback response
+                    if context and 'predicted_class' in context:
+                        bmi = context.get('bmi', 0)
+                        obesity_class = context.get('predicted_class', 'Normal Weight')
+                        response_text = get_quick_health_tips(obesity_class, bmi)
+                    else:
+                        response_text = "Üzgünüm, şu anda Llama servisi çalışmıyor. Temel sağlık önerileri için lütfen Ollama'yı başlatın."
+                    
+                    # Kelime kelime stream simülasyonu
+                    words = response_text.split()
+                    for word in words:
+                        yield f"data: {json.dumps({'chunk': word + ' ', 'done': False})}\n\n"
+                    
+                    yield f"data: {json.dumps({'chunk': '', 'done': True})}\n\n"
+                    
+            except Exception as e:
+                yield f"data: {json.dumps({'error': str(e), 'done': True})}\n\n"
+        
+        return Response(
+            generate_stream(),
+            mimetype='text/event-stream',
+            headers={
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': '*',
+                'Access-Control-Allow-Headers': 'Content-Type'
+            }
+        )
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Streaming chat failed: {str(e)}"
+        }), 500
+
+@app.route('/api/health-recommendations', methods=['POST'])
+def get_health_recommendations():
+    """Obezite tahmin sonuçlarına özel sağlık önerileri"""
+    try:
+        data = request.get_json()
+        
+        # Prediction data ve user input kontrolü
+        if 'prediction' not in data or 'user_input' not in data:
+            return jsonify({
+                "success": False,
+                "error": "Both prediction and user_input fields are required"
+            }), 400
+        
+        prediction_data = data['prediction']
+        user_input = data['user_input']
+        
+        # Llama ile kişiselleştirilmiş öneriler al
+        if health_bot.check_ollama_status() and health_bot.check_model_availability():
+            recommendations = health_bot.get_health_recommendations(prediction_data, user_input)
+        else:
+            # Fallback öneriler
+            obesity_class = prediction_data.get('predicted_class', 'Normal Weight')
+            bmi = prediction_data.get('bmi', 0)
+            recommendations = get_quick_health_tips(obesity_class, bmi)
+        
+        return jsonify({
+            "success": True,
+            "recommendations": recommendations,
+            "timestamp": datetime.now().isoformat(),
+            "personalized": health_bot.check_ollama_status()
+        })
+        
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Health recommendations failed: {str(e)}"
+        }), 500
+
 if __name__ == '__main__':
     print("Starting Obesity Prediction API...")
     print("API Endpoints:")
     print("   GET  / - Health check")
     print("   POST /predict - Full prediction")
     print("   POST /quick-predict - Quick prediction")
+    print("   POST /api/chat - Chat with health assistant")
+    print("   POST /api/chat/stream - Streaming chat")
+    print("   GET  /api/chat/status - Check Llama service status")
     app.run(debug=True, host='0.0.0.0', port=5000)
